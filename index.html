@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>DEEPCRAFT — 24-hour college hackathon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cave:#17181B;
+  --raised:#24262A;
+  --bone:#E7DDC8;
+  --ember:#E45A2A;
+  --copper:#B87945;
+  --moss:#687653;
+  --portal:#53D8D2;
+  --line:#444749;
+  --display:"Bebas Neue","Arial Narrow",Impact,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;background:var(--cave);color:var(--bone);font-family:var(--body);overflow:hidden}
+body.standard-open{overflow:auto}
+button{font-family:var(--mono);cursor:pointer}
+:focus-visible{outline:2px solid var(--portal);outline-offset:2px}
+
+/* ---------- canvas ---------- */
+#scene-canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#scene-layer{position:fixed;inset:0}
+#scene-layer[hidden]{display:none}
+
+/* ---------- world load ---------- */
+#world-load-screen{
+  position:fixed;inset:0;z-index:90;background:var(--cave);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;
+}
+#world-load-screen .world-label{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--copper)}
+#world-load-screen h1{font-family:var(--display);font-size:clamp(56px,14vw,140px);line-height:.86;margin:0;letter-spacing:.04em}
+#world-load-screen .sub{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:#9a978f;margin:0}
+.progress-track{width:min(420px,80vw);height:14px;background:var(--raised);border:2px solid var(--line);padding:2px}
+.progress-fill{height:100%;width:0%;background:var(--ember);transition:width .12s linear}
+.progress-read{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#8b8880}
+
+/* ---------- shared HUD chrome ---------- */
+.hud-btn{
+  background:var(--raised);color:var(--bone);border:2px solid var(--line);
+  padding:9px 13px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  box-shadow:inset -2px -2px 0 rgba(0,0,0,.45), inset 2px 2px 0 rgba(255,255,255,.06);
+}
+.hud-btn:hover{border-color:var(--bone)}
+.hud-btn:active{box-shadow:inset 2px 2px 0 rgba(0,0,0,.5)}
+.hud-btn[data-active="true"]{background:var(--ember);border-color:var(--ember);color:#17181B;font-weight:600}
+.hud-btn.portal{background:var(--portal);border-color:var(--portal);color:#0d1f1f;font-weight:600}
+
+/* ---------- top nav ---------- */
+#top-nav{
+  position:fixed;top:0;left:0;right:0;z-index:40;
+  display:flex;align-items:center;gap:10px;padding:14px 16px;
+  padding-top:calc(14px + env(safe-area-inset-top));
+  background:linear-gradient(180deg,rgba(23,24,27,.92),rgba(23,24,27,0));
+  pointer-events:none;
+}
+#top-nav > *{pointer-events:auto}
+.brand{font-family:var(--display);font-size:26px;letter-spacing:.1em;margin-right:auto;line-height:1}
+.brand span{color:var(--ember)}
+.nav-group{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* ---------- chamber panel ---------- */
+#chamber-panel{
+  position:fixed;z-index:35;left:16px;bottom:120px;width:min(400px,calc(100vw - 32px));
+  background:var(--raised);border:2px solid var(--line);
+  box-shadow:6px 6px 0 rgba(0,0,0,.55);
+  padding:18px 18px 16px;
+}
+#chamber-panel[hidden]{display:none}
+.panel-index{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--copper)}
+#chamber-panel h2{font-family:var(--display);font-size:38px;letter-spacing:.05em;margin:2px 0 8px;line-height:.94}
+#chamber-panel p{font-size:14px;line-height:1.55;margin:0 0 12px;color:#cfc7b5}
+.panel-close{position:absolute;top:10px;right:10px;background:none;border:none;color:#8b8880;font-size:16px;padding:4px 6px}
+.panel-close:hover{color:var(--bone)}
+.stat-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:.14em;border:2px solid var(--line);padding:5px 8px;color:var(--bone)}
+.chip.ember{border-color:var(--ember);color:var(--ember)}
+.chip.moss{border-color:var(--moss);color:#9db080}
+.line-list{list-style:none;margin:0 0 12px;padding:0}
+.line-list li{display:flex;gap:10px;font-family:var(--mono);font-size:12px;padding:6px 0;border-top:1px solid var(--line);color:#cfc7b5}
+.line-list li:first-child{border-top:none}
+.line-list .k{color:var(--copper);min-width:96px;flex:0 0 auto}
+.panel-cta{width:100%;margin-top:2px}
+
+/* ---------- hotbar ---------- */
+#chamber-navigator{
+  position:fixed;z-index:40;left:50%;transform:translateX(-50%);
+  bottom:calc(14px + env(safe-area-inset-bottom));
+  display:flex;gap:6px;padding:6px;background:rgba(23,24,27,.86);border:2px solid var(--line);
+  max-width:calc(100vw - 20px);overflow-x:auto;scrollbar-width:none;
+}
+#chamber-navigator::-webkit-scrollbar{display:none}
+.slot{
+  position:relative;width:54px;height:54px;flex:0 0 auto;background:var(--raised);
+  border:2px solid var(--line);color:var(--bone);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;padding:0;
+  box-shadow:inset -2px -2px 0 rgba(0,0,0,.45);
+}
+.slot .num{font-family:var(--mono);font-size:9px;color:#8b8880;letter-spacing:.1em}
+.slot .glyph{width:18px;height:18px;border:2px solid currentColor}
+.slot:hover{border-color:var(--bone)}
+.slot[data-active="true"]{border-color:var(--ember);background:#2e2621}
+.slot[data-active="true"] .num{color:var(--ember)}
+.slot .tip{
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;white-space:nowrap;
+  background:var(--cave);border:2px solid var(--line);padding:4px 7px;opacity:0;pointer-events:none;transition:opacity .12s;
+}
+.slot:hover .tip,.slot:focus-visible .tip{opacity:1}
+
+/* ---------- readouts ---------- */
+#hint-bar{
+  position:fixed;z-index:30;right:16px;bottom:calc(90px + env(safe-area-inset-bottom));
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:#7e7b74;text-align:right;line-height:1.9;
+}
+#hint-bar b{color:var(--bone);font-weight:500}
+#guided-tour-skip-button{position:fixed;z-index:40;left:50%;transform:translateX(-50%);top:calc(70px + env(safe-area-inset-top))}
+#guided-tour-skip-button[hidden]{display:none}
+#depth-read{
+  position:fixed;z-index:30;left:16px;top:calc(72px + env(safe-area-inset-top));
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:#7e7b74;
+}
+.crosshair{position:fixed;z-index:20;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;pointer-events:none;opacity:.5}
+.crosshair:before,.crosshair:after{content:"";position:absolute;background:var(--bone)}
+.crosshair:before{left:5px;top:0;width:2px;height:12px}
+.crosshair:after{top:5px;left:0;height:2px;width:12px}
+
+/* ---------- touch controls ---------- */
+#touch-controls{position:fixed;inset:0;z-index:25;display:none;pointer-events:none}
+#touch-controls > *{pointer-events:auto}
+body.touch #touch-controls{display:block}
+#virtual-joystick{
+  position:absolute;left:22px;bottom:calc(74px + env(safe-area-inset-bottom));
+  width:118px;height:118px;border-radius:50%;border:2px solid var(--line);
+  background:rgba(36,38,42,.55);touch-action:none;
+}
+#virtual-joystick .nub{
+  position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+  border-radius:50%;background:var(--bone);opacity:.75;
+}
+#drag-look-area{
+  position:absolute;right:0;top:70px;bottom:150px;width:52%;touch-action:none;
+}
+#drag-look-area .look-label{
+  position:absolute;right:16px;bottom:12px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.16em;color:#6a6862;
+}
+
+/* ---------- registration ---------- */
+#registration-dialog{
+  position:fixed;inset:0;z-index:70;background:rgba(10,10,12,.82);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+#registration-dialog[hidden]{display:none}
+.reg-card{width:min(460px,100%);background:var(--raised);border:2px solid var(--line);box-shadow:8px 8px 0 rgba(0,0,0,.6);padding:22px;position:relative;max-height:90vh;overflow:auto}
+.reg-card h2{font-family:var(--display);font-size:40px;margin:2px 0 4px;letter-spacing:.05em;line-height:.95}
+.reg-card .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--portal)}
+.reg-card p.lead{font-size:13px;color:#cfc7b5;margin:0 0 16px;line-height:1.55}
+.field{margin-bottom:12px}
+.field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:#9a978f;margin-bottom:5px}
+.field input,.field textarea{
+  width:100%;background:var(--cave);border:2px solid var(--line);color:var(--bone);
+  font-family:var(--body);font-size:14px;padding:10px;resize:vertical;
+}
+.field input:focus,.field textarea:focus{border-color:var(--portal);outline:none}
+.err{font-family:var(--mono);font-size:11px;color:var(--ember);margin-top:5px;min-height:0}
+#registration-submit-button,#registration-done-button{width:100%;padding:13px;font-size:12px}
+.reg-success{text-align:center;padding:12px 0}
+.reg-success .mark{width:56px;height:56px;margin:0 auto 14px;border:3px solid var(--portal);display:flex;align-items:center;justify-content:center;color:var(--portal);font-size:26px}
+.reg-note{font-family:var(--mono);font-size:10px;color:#7e7b74;letter-spacing:.1em;margin-top:12px;line-height:1.7}
+
+/* ---------- standard 2D view ---------- */
+#standard-view{position:fixed;inset:0;z-index:60;background:var(--cave);overflow-y:auto;-webkit-overflow-scrolling:touch}
+#standard-view[hidden]{display:none}
+.doc{max-width:760px;margin:0 auto;padding:32px 20px 80px}
+.doc header.masthead{border-bottom:2px solid var(--line);padding-bottom:20px;margin-bottom:8px}
+.doc h1{font-family:var(--display);font-size:clamp(52px,12vw,104px);line-height:.86;margin:10px 0 6px;letter-spacing:.03em}
+.doc h1 span{color:var(--ember)}
+.doc section{border-top:2px solid var(--line);padding:26px 0}
+.doc h2{font-family:var(--display);font-size:32px;letter-spacing:.05em;margin:0 0 4px}
+.doc .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--copper)}
+.doc p{font-size:15px;line-height:1.65;color:#cfc7b5;margin:8px 0}
+.doc ul{margin:8px 0;padding-left:18px;color:#cfc7b5;font-size:15px;line-height:1.8}
+.doc dl{margin:10px 0;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:var(--mono);font-size:13px;color:#cfc7b5}
+.doc dt{color:var(--copper)}
+.doc .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.doc footer{border-top:2px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11px;color:#7e7b74;letter-spacing:.1em;line-height:1.9}
+
+@media (max-width:820px){
+  #chamber-panel{left:10px;right:10px;width:auto;bottom:200px;max-height:36vh;overflow:auto}
+  #hint-bar{display:none}
+  .brand{font-size:20px}
+  .hud-btn{padding:8px 10px;font-size:10px;letter-spacing:.1em}
+  #chamber-navigator{bottom:calc(10px + env(safe-area-inset-bottom))}
+  .slot{width:44px;height:44px}
+  #depth-read{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="scene-layer">
+  <canvas id="scene-canvas" data-testid="cave-canvas" aria-label="Interactive 3D cave. Use the standard view toggle for a text version."></canvas>
+  <div class="crosshair" id="crosshair"></div>
+
+  <div id="depth-read" data-testid="depth-readout">Y −54 · REGION 01</div>
+
+  <div id="touch-controls" data-testid="touch-controls">
+    <div id="virtual-joystick" data-testid="virtual-joystick" role="application" aria-label="Movement joystick"><div class="nub" id="joy-nub"></div></div>
+    <div id="drag-look-area" data-testid="drag-look-area" role="application" aria-label="Drag to look around"><span class="look-label">DRAG TO LOOK</span></div>
+  </div>
+</div>
+
+<header id="top-nav">
+  <div class="brand">DEEP<span>CRAFT</span></div>
+  <div class="nav-group">
+    <button class="hud-btn" id="movement-mode-toggle" data-testid="movement-mode-toggle">Explore</button>
+    <button class="hud-btn" id="guided-tour-button" data-testid="guided-tour-button">Guided tour</button>
+    <button class="hud-btn" id="accessible-view-toggle" data-testid="accessible-view-toggle">Standard view</button>
+    <button class="hud-btn" id="sound-toggle-button" data-testid="sound-toggle-button" aria-pressed="false">Sound on</button>
+    <button class="hud-btn portal" id="nav-register-button" data-testid="nav-register-button">Register</button>
+  </div>
+</header>
+
+<button class="hud-btn" id="guided-tour-skip-button" data-testid="guided-tour-skip-button" hidden>Skip tour</button>
+
+<section id="chamber-panel" data-testid="chamber-panel" hidden aria-live="polite">
+  <button class="panel-close" id="chamber-panel-close" data-testid="chamber-panel-close" aria-label="Close panel">✕</button>
+  <div class="panel-index" id="panel-index">01 — CAVE MOUTH</div>
+  <h2 id="panel-title">Cave Mouth</h2>
+  <div id="panel-body"></div>
+</section>
+
+<div id="hint-bar" data-testid="control-hints">
+  <div><b>W A S D</b> move · <b>SHIFT</b> sprint</div>
+  <div><b>SPACE</b> jump · <b>C</b> crouch · <b>V</b> view</div>
+  <div><b>DRAG</b> look · <b>1–8</b> regions</div>
+</div>
+
+<nav id="chamber-navigator" data-testid="chamber-navigator" aria-label="Cave regions"></nav>
+
+<div id="registration-dialog" data-testid="registration-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="reg-title">
+  <div class="reg-card">
+    <button class="panel-close" id="registration-close-button" data-testid="registration-close-button" aria-label="Close registration">✕</button>
+    <div id="reg-form-view">
+      <div class="eyebrow">08 — END PORTAL</div>
+      <h2 id="reg-title">Claim a slot</h2>
+      <p class="lead">Registration is open for 120 student builders. Bring your laptop. We'll bring the rest.</p>
+      <div class="field">
+        <label for="registration-name-input">Your name</label>
+        <input id="registration-name-input" data-testid="registration-name-input" type="text" autocomplete="name" placeholder="Full name" />
+      </div>
+      <div class="field">
+        <label for="registration-email-input">College email</label>
+        <input id="registration-email-input" data-testid="registration-email-input" type="email" autocomplete="email" placeholder="you@college.edu" />
+      </div>
+      <div class="field">
+        <label for="registration-project-input">What do you want to build?</label>
+        <textarea id="registration-project-input" data-testid="registration-project-input" rows="3" placeholder="One or two lines is plenty."></textarea>
+      </div>
+      <div class="err" id="registration-error" data-testid="registration-error" role="alert"></div>
+      <button class="hud-btn portal" id="registration-submit-button" data-testid="registration-submit-button">Send registration</button>
+      <p class="reg-note">Demo build — entries are kept in this browser session only and are cleared on reload.</p>
+    </div>
+    <div id="reg-success-view" class="reg-success" hidden data-testid="registration-success">
+      <div class="mark">✓</div>
+      <div class="eyebrow">SLOT HELD</div>
+      <h2>You're on the list</h2>
+      <p class="lead" id="reg-success-line">Check your inbox on 01 April for the build-day brief.</p>
+      <button class="hud-btn" id="registration-done-button" data-testid="registration-done-button">Back to the cave</button>
+    </div>
+  </div>
+</div>
+
+<main id="standard-view" data-testid="standard-view" hidden>
+  <div class="doc">
+    <header class="masthead">
+      <div class="eyebrow">STANDARD VIEW · NO 3D REQUIRED</div>
+      <h1>DEEP<span>CRAFT</span></h1>
+      <p>A 24-hour college hackathon for builders who turn blank canvases into working worlds.</p>
+      <div class="row">
+        <button class="hud-btn" id="return-to-3d-button" data-testid="return-to-3d-button">Return to the cave</button>
+        <button class="hud-btn portal" id="accessible-register-button" data-testid="accessible-register-button">Register</button>
+      </div>
+    </header>
+
+    <section data-testid="accessible-entrance-section">
+      <div class="eyebrow">01 — CAVE MOUTH</div>
+      <h2>The short version</h2>
+      <p>24 hours. 06—07 April. Teams of two to four. One working demo at the end of it.</p>
+    </section>
+
+    <section data-testid="accessible-mineshaft-section">
+      <div class="eyebrow">02 — ABANDONED MINESHAFT</div>
+      <h2>About the event</h2>
+      <p>Bring a small crew, a sharp idea, and the nerve to ship. Mentors, meals, and a room full of makers keep the signal alive all night.</p>
+    </section>
+
+    <section data-testid="accessible-crafting-section">
+      <div class="eyebrow">03 — DRIPSTONE CAVERNS</div>
+      <h2>Timeline</h2>
+      <dl>
+        <dt>06 APR · 09:00</dt><dd>Opening</dd>
+        <dt>06 APR · 10:00</dt><dd>Build begins</dd>
+        <dt>06 APR · 20:00</dt><dd>Mentor run</dd>
+        <dt>07 APR · 09:00</dt><dd>Final demos</dd>
+      </dl>
+    </section>
+
+    <section data-testid="accessible-lava-section">
+      <div class="eyebrow">04 — LAVA LAKE</div>
+      <h2>Prize pool</h2>
+      <p>₹1,00,000 total.</p>
+      <dl>
+        <dt>Main build</dt><dd>₹60K</dd>
+        <dt>Design</dt><dd>₹25K</dd>
+        <dt>Community</dt><dd>₹15K</dd>
+      </dl>
+    </section>
+
+    <section data-testid="accessible-lush-section">
+      <div class="eyebrow">05 — LUSH CAVE</div>
+      <h2>Mentors</h2>
+      <dl>
+        <dt>Asha</dt><dd>Product thinking</dd>
+        <dt>Rohan</dt><dd>Systems &amp; scale</dd>
+        <dt>Mira</dt><dd>Design polish</dd>
+      </dl>
+    </section>
+
+    <section data-testid="accessible-deepdark-section">
+      <div class="eyebrow">06 — DEEP DARK</div>
+      <h2>Rules and eligibility</h2>
+      <ul>
+        <li>Enrolled college students</li>
+        <li>Teams of 2–4 builders</li>
+        <li>Original work only</li>
+        <li>Respectful collaboration</li>
+        <li>Credit your tools</li>
+        <li>Submit before the final bell</li>
+      </ul>
+    </section>
+
+    <section data-testid="accessible-stronghold-section">
+      <div class="eyebrow">07 — STRONGHOLD LIBRARY</div>
+      <h2>Sponsors and FAQs</h2>
+      <p>Backed by Redstone Labs and Craft Co.</p>
+      <dl>
+        <dt>Meals</dt><dd>Dinner, midnight snack, and breakfast are covered</dd>
+        <dt>Wi-Fi</dt><dd>Wired and wireless on every floor</dd>
+        <dt>Judging</dt><dd>Working demo, originality, and craft</dd>
+        <dt>What to bring</dt><dd>Laptop, charger, college ID</dd>
+        <dt>Help desk</dt><dd>Staffed the full 24 hours near the entrance</dd>
+      </dl>
+    </section>
+
+    <section data-testid="accessible-portal-section">
+      <div class="eyebrow">08 — END PORTAL</div>
+      <h2>Register</h2>
+      <p>Registration is open for 120 student builders. Bring your laptop. We'll bring the rest.</p>
+      <div class="row">
+        <button class="hud-btn portal" id="accessible-portal-register-button" data-testid="accessible-portal-register-button">Register</button>
+      </div>
+    </section>
+
+    <footer>
+      DEEPCRAFT · 06—07 APRIL · ORIGINAL VOXEL BUILD<br>
+      Not affiliated with, endorsed by, or connected to Mojang or Microsoft.
+    </footer>
+  </div>
+</main>
+
+<div id="world-load-screen" data-testid="world-load-screen">
+  <div class="world-label">GENERATING WORLD</div>
+  <h1>DEEPCRAFT</h1>
+  <p class="sub">DIGGING STRAIGHT DOWN</p>
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="progress-read" id="progress-read">0%</div>
+  <button class="hud-btn" id="loading-skip-button" data-testid="loading-skip-button">Skip loading</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================================
+   DEEPCRAFT — original voxel cave expedition
+   Single-file build. No Minecraft assets: all geometry is generated from
+   primitives, all colours are authored here, all audio is synthesised
+   with the Web Audio API.
+   ===================================================================== */
+(function () {
+"use strict";
+
+var THREE = window.THREE;
+var $ = function (id) { return document.getElementById(id); };
+var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var isTouch = window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+if (isTouch) document.body.classList.add("touch");
+
+/* ------------------------------ palette ----------------------------- */
+var C = {
+  cave: 0x17181b, raised: 0x24262a, bone: 0xe7ddc8, ember: 0xe45a2a,
+  copper: 0xb87945, moss: 0x687653, portal: 0x53d8d2, line: 0x444749
+};
+
+/* ------------------------------ regions ----------------------------- */
+var REGIONS = [
+  {
+    id: "entrance", num: "01", name: "Cave Mouth", anchor: { x: 0, z: 8 }, radius: 2.6,
+    kind: "hero",
+    body: "DEEPCRAFT is a 24-hour college hackathon for builders who turn blank canvases into working worlds.",
+    chips: ["24H", "06—07 APR"]
+  },
+  {
+    id: "mineshaft", num: "02", name: "Abandoned Mineshaft", anchor: { x: 0, z: 2 }, radius: 2.6,
+    kind: "about",
+    body: "Bring a small crew, a sharp idea, and the nerve to ship. Mentors, meals, and a room full of makers keep the signal alive all night.",
+    chips: ["TEAMS OF 2—4"]
+  },
+  {
+    id: "crafting", num: "03", name: "Dripstone Caverns", anchor: { x: 5, z: -4 }, radius: 2.8,
+    kind: "timeline",
+    body: "Four fixed points. Everything between them is yours.",
+    rows: [
+      ["06 APR · 09:00", "Opening"],
+      ["06 APR · 10:00", "Build begins"],
+      ["06 APR · 20:00", "Mentor run"],
+      ["07 APR · 09:00", "Final demos"]
+    ]
+  },
+  {
+    id: "lava", num: "04", name: "Lava Lake", anchor: { x: -4, z: -9 }, radius: 2.8,
+    kind: "prizes",
+    body: "₹1,00,000 across three tracks.",
+    rows: [["Main build", "₹60K"], ["Design", "₹25K"], ["Community", "₹15K"]],
+    chips: ["₹1,00,000 TOTAL"]
+  },
+  {
+    id: "lush", num: "05", name: "Lush Cave", anchor: { x: 4, z: -14 }, radius: 2.8,
+    kind: "mentors",
+    body: "Three mentors on rotation through the night.",
+    rows: [["Asha", "Product thinking"], ["Rohan", "Systems & scale"], ["Mira", "Design polish"]]
+  },
+  {
+    id: "deepdark", num: "06", name: "Deep Dark", anchor: { x: -4, z: -18 }, radius: 2.8,
+    kind: "rules",
+    body: "Six rules. Break none of them.",
+    list: [
+      "Enrolled college students", "Teams of 2–4 builders", "Original work only",
+      "Respectful collaboration", "Credit your tools", "Submit before the final bell"
+    ]
+  },
+  {
+    id: "stronghold", num: "07", name: "Stronghold Library", anchor: { x: 4, z: -22 }, radius: 2.8,
+    kind: "faq",
+    body: "Backed by Redstone Labs and Craft Co.",
+    rows: [
+      ["Meals", "Dinner, midnight snack, breakfast"],
+      ["Wi-Fi", "Wired and wireless on every floor"],
+      ["Judging", "Working demo, originality, craft"],
+      ["Bring", "Laptop, charger, college ID"],
+      ["Help desk", "Staffed all 24 hours"]
+    ]
+  },
+  {
+    id: "portal", num: "08", name: "End Portal", anchor: { x: 0, z: -27 }, radius: 3.0,
+    kind: "cta",
+    body: "Registration is open for 120 student builders. Bring your laptop. We'll bring the rest.",
+    chips: ["120 SLOTS"]
+  }
+];
+
+/* --------------------------- cave floorplan -------------------------- */
+/* The cave is the union of axis-aligned rectangles: a room per region,
+   plus L-shaped halls linking consecutive rooms. Collision, geometry and
+   lighting all read from this one description. */
+var ROOMS = [], RECTS = [];
+
+function rect(minX, maxX, minZ, maxZ) {
+  return { minX: minX, maxX: maxX, minZ: minZ, maxZ: maxZ };
+}
+function addRoom(cx, cz, hx, hz) {
+  var r = rect(cx - hx, cx + hx, cz - hz, cz + hz);
+  ROOMS.push(r); RECTS.push(r); return r;
+}
+function addHall(x1, z1, x2, z2, w) {
+  RECTS.push(rect(Math.min(x1, x2) - w, Math.max(x1, x2) + w, z1 - w, z1 + w));
+  RECTS.push(rect(x2 - w, x2 + w, Math.min(z1, z2) - w, Math.max(z1, z2) + w));
+}
+
+/* Extents land on .5 so every rectangle edge sits exactly on a block
+   face — that keeps the collision boundary flush with the visible wall
+   instead of stopping the player short of it. */
+REGIONS.forEach(function (r, i) {
+  var h = i === 7 ? 5.5 : 4.5;
+  addRoom(r.anchor.x, r.anchor.z, h, h);
+  if (i > 0) {
+    var p = REGIONS[i - 1].anchor;
+    addHall(p.x, p.z, r.anchor.x, r.anchor.z, 2.5);
+  }
+});
+
+function inRects(list, x, z, pad) {
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i];
+    if (x > r.minX + pad && x < r.maxX - pad && z > r.minZ + pad && z < r.maxZ - pad) return true;
+  }
+  return false;
+}
+function inCave(x, z, pad) { return inRects(RECTS, x, z, pad || 0); }
+function inRoom(x, z) { return inRects(ROOMS, x, z, 0); }
+
+function ceilingAt(x, z) { return inRoom(x, z) ? 6 : 4; }
+
+function nearestRegion(x, z) {
+  var best = 0, bd = Infinity;
+  for (var i = 0; i < REGIONS.length; i++) {
+    var a = REGIONS[i].anchor;
+    var d = (a.x - x) * (a.x - x) + (a.z - z) * (a.z - z);
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+
+function hash(x, z) {
+  var s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+/* ------------------------- block batching ---------------------------- */
+/* Blocks are grouped by colour and flushed into one InstancedMesh per
+   colour, so a few thousand cubes cost a handful of draw calls. */
+var batches = {};
+function block(x, y, z, color, opts) {
+  var o = opts || {};
+  var key = color + "|" + (o.emissive ? 1 : 0) + "|" + (o.sx || 1) + "," + (o.sy || 1) + "," + (o.sz || 1);
+  var b = batches[key];
+  if (!b) {
+    b = batches[key] = {
+      color: color, emissive: !!o.emissive,
+      sx: o.sx || 1, sy: o.sy || 1, sz: o.sz || 1, items: []
+    };
+  }
+  b.items.push([x, y, z, o.rot || 0]);
+}
+
+var CUBE = new THREE.BoxBufferGeometry(1, 1, 1);
+var world = new THREE.Group();
+
+function flushBatches() {
+  var dummy = new THREE.Object3D();
+  Object.keys(batches).forEach(function (key) {
+    var b = batches[key];
+    var geo = (b.sx === 1 && b.sy === 1 && b.sz === 1)
+      ? CUBE : new THREE.BoxBufferGeometry(b.sx, b.sy, b.sz);
+    var mat = b.emissive
+      ? new THREE.MeshBasicMaterial({ color: b.color })
+      : new THREE.MeshLambertMaterial({ color: b.color });
+    var mesh = new THREE.InstancedMesh(geo, mat, b.items.length);
+    for (var i = 0; i < b.items.length; i++) {
+      var it = b.items[i];
+      dummy.position.set(it[0], it[1], it[2]);
+      dummy.rotation.set(0, it[3], 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false;
+    world.add(mesh);
+  });
+  batches = {};
+}
+
+/* --------------------------- stone palettes -------------------------- */
+var STONE = [
+  [0x3a3d42, 0x33363b, 0x2c2f34, 0x43464b],          // 01 cave mouth
+  [0x3b3630, 0x342f2a, 0x2d2925, 0x4a4038],          // 02 mineshaft
+  [0x45423c, 0x3c3934, 0x35322d, 0x4e4a43],          // 03 dripstone
+  [0x3a3330, 0x332c29, 0x2b2422, 0x46352c],          // 04 lava lake
+  [0x333a30, 0x2c332a, 0x3d4636, 0x455036],          // 05 lush
+  [0x1c1e21, 0x191b1e, 0x161719, 0x212528],          // 06 deep dark
+  [0x424549, 0x3a3d41, 0x4b4e52, 0x33363a],          // 07 stronghold
+  [0x2a2d33, 0x24272c, 0x1f2227, 0x323740]           // 08 portal
+];
+
+function stoneColor(x, z, y) {
+  var pal = STONE[nearestRegion(x, z)];
+  var h = hash(x * 3.1 + y * 1.7, z * 2.3 + y * 0.9);
+  return pal[Math.floor(h * pal.length) % pal.length];
+}
+
+/* --------------------------- build the cave -------------------------- */
+var GX0 = -12, GX1 = 12, GZ0 = -34, GZ1 = 15;
+
+var NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+function buildShell() {
+  for (var x = GX0; x <= GX1; x++) {
+    for (var z = GZ0; z <= GZ1; z++) {
+      if (inCave(x, z, 0)) {
+        block(x, -0.5, z, stoneColor(x, z, 0));
+        var h = ceilingAt(x, z);
+        block(x, h + 0.5, z, stoneColor(x, z, h));
+        // a low hall opening into a tall room leaves a vertical slot —
+        // fill it so you never see through the roof into the void
+        var top = h;
+        for (var n = 0; n < NEIGHBOURS.length; n++) {
+          var ax = x + NEIGHBOURS[n][0], az = z + NEIGHBOURS[n][1];
+          if (inCave(ax, az, 0)) top = Math.max(top, ceilingAt(ax, az));
+        }
+        for (var fy = h + 1; fy <= top; fy++) block(x, fy + 0.5, z, stoneColor(x, z, fy));
+        // occasional ceiling nub for a rougher roof
+        if (hash(x, z + 99) > 0.86) block(x, h - 0.5, z, stoneColor(x, z, h + 1));
+      } else {
+        var near = false;
+        for (var dx = -1; dx <= 1 && !near; dx++) {
+          for (var dz = -1; dz <= 1; dz++) {
+            if (inCave(x + dx, z + dz, 0)) { near = true; break; }
+          }
+        }
+        if (!near) continue;
+        var wt = 4;
+        for (var m = 0; m < NEIGHBOURS.length; m++) {
+          var bx = x + NEIGHBOURS[m][0], bz = z + NEIGHBOURS[m][1];
+          if (inCave(bx, bz, 0)) wt = Math.max(wt, ceilingAt(bx, bz));
+        }
+        for (var y = 0; y <= wt; y++) block(x, y + 0.5, z, stoneColor(x, z, y));
+      }
+    }
+  }
+}
+
+/* ------------------------------ obstacles ---------------------------- */
+/* Precise AABBs so the player cannot walk through props, lava or the
+   portal frame. Corridor clamping alone was too coarse. */
+var OBSTACLES = [];
+function obstacle(cx, cz, hx, hz) {
+  OBSTACLES.push({ minX: cx - hx, maxX: cx + hx, minZ: cz - hz, maxZ: cz + hz });
+}
+
+/* ------------------------------- props ------------------------------- */
+var torches = [];   // {x,y,z} — flicker anchors
+var embersAt = [];  // particle sources
+
+function torch(x, y, z) {
+  block(x, y, z, 0x6b4a2c, { sx: 0.18, sy: 0.9, sz: 0.18 });
+  block(x, y + 0.55, z, 0xffb347, { emissive: true, sx: 0.26, sy: 0.26, sz: 0.26 });
+  torches.push({ x: x, y: y + 0.55, z: z });
+  embersAt.push({ x: x, y: y + 0.7, z: z, spread: 0.3, up: 0.5 });
+}
+
+/* wall-hugging torches: walk each room edge and drop a few */
+function roomTorches(cx, cz, h, y) {
+  torch(cx - h + 0.6, y, cz - h + 0.6);
+  torch(cx + h - 0.6, y, cz + h - 0.6);
+}
+
+function propsCaveMouth(a) {
+  // daylight shaft: pale blocks stepping down from the roof
+  for (var i = 0; i < 5; i++) block(a.x + 2 - i * 0.5, 6.2 - i * 0.15, a.z + 3.4, 0x8d9aa4, { emissive: true, sx: 1.2, sy: 0.12, sz: 1.2 });
+  // a small sign post at the mouth
+  block(a.x, 1.1, a.z + 2.4, 0x5a4530, { sx: 0.16, sy: 2.2, sz: 0.16 });
+  block(a.x, 2.1, a.z + 2.4, 0xe7ddc8, { emissive: true, sx: 1.6, sy: 0.7, sz: 0.12 });
+  obstacle(a.x, a.z + 2.4, 0.3, 0.3);
+  // scattered rubble
+  for (var j = 0; j < 8; j++) {
+    var hx = hash(j, 3), hz = hash(j + 20, 7);
+    block(a.x - 3 + hx * 6, 0.2, a.z - 3 + hz * 6, 0x484b50, { sx: 0.5, sy: 0.4, sz: 0.5 });
+  }
+  roomTorches(a.x, a.z, 4.2, 0.95);
+}
+
+function propsMineshaft(a) {
+  // rails running through the room
+  for (var z = a.z - 3.5; z <= a.z + 3.5; z += 0.5) {
+    block(a.x - 0.45, 0.06, z, 0x8a8f96, { sx: 0.12, sy: 0.06, sz: 0.5 });
+    block(a.x + 0.45, 0.06, z, 0x8a8f96, { sx: 0.12, sy: 0.06, sz: 0.5 });
+    if (Math.round(z * 2) % 2 === 0) block(a.x, 0.05, z, 0x5c4630, { sx: 1.2, sy: 0.08, sz: 0.22 });
+  }
+  // support frames
+  [-2.6, 0.4, 3.2].forEach(function (dz) {
+    block(a.x - 1.6, 1.2, a.z + dz, 0x6b5236, { sx: 0.3, sy: 2.4, sz: 0.3 });
+    block(a.x + 1.6, 1.2, a.z + dz, 0x6b5236, { sx: 0.3, sy: 2.4, sz: 0.3 });
+    block(a.x, 2.5, a.z + dz, 0x6b5236, { sx: 3.5, sy: 0.3, sz: 0.3 });
+    obstacle(a.x - 1.6, a.z + dz, 0.28, 0.28);
+    obstacle(a.x + 1.6, a.z + dz, 0.28, 0.28);
+  });
+  // minecart
+  var mx = a.x, mz = a.z - 1.2;
+  block(mx, 0.45, mz, 0x6a5a4a, { sx: 0.9, sy: 0.55, sz: 1.3 });
+  block(mx, 0.72, mz, 0x2a231d, { sx: 0.7, sy: 0.2, sz: 1.1 });
+  block(mx - 0.5, 0.2, mz, 0x3c3f44, { sx: 0.12, sy: 0.36, sz: 0.36 });
+  block(mx + 0.5, 0.2, mz, 0x3c3f44, { sx: 0.12, sy: 0.36, sz: 0.36 });
+  obstacle(mx, mz, 0.6, 0.8);
+  // copper ore flecks in the wall
+  for (var i = 0; i < 10; i++) {
+    var h1 = hash(i, 41), h2 = hash(i + 5, 12);
+    block(a.x - 3.6 + h1 * 0.4, 1 + h2 * 2.4, a.z - 3.4 + h1 * 6.8, C.copper, { sx: 0.34, sy: 0.34, sz: 0.34 });
+  }
+  torch(a.x - 1.6, 1.9, a.z + 0.4);
+  torch(a.x + 1.6, 1.9, a.z - 2.6);
+}
+
+function propsDripstone(a) {
+  function spike(x, z, len, up) {
+    var w = 0.55;
+    for (var i = 0; i < len; i++) {
+      var y = up ? 0.15 + i * 0.35 : 5.85 - i * 0.35;
+      block(x, y, z, i % 2 ? 0x6e6357 : 0x7a6e60, { sx: w, sy: 0.35, sz: w });
+      w *= 0.78;
+    }
+    if (up && len > 3) obstacle(x, z, 0.32, 0.32);
+  }
+  for (var i = 0; i < 14; i++) {
+    var hx = hash(i, 71), hz = hash(i + 9, 17), hl = hash(i + 3, 5);
+    var x = a.x - 3.4 + hx * 6.8, z = a.z - 3.4 + hz * 6.8;
+    if (Math.abs(x - a.x) < 1 && Math.abs(z - a.z) < 1) continue;
+    spike(x, z, 2 + Math.floor(hl * 5), i % 2 === 0);
+  }
+  // water pool
+  block(a.x + 2.2, 0.06, a.z + 2.2, 0x2f5b6b, { sx: 2.4, sy: 0.12, sz: 2.4 });
+  obstacle(a.x + 2.2, a.z + 2.2, 1.2, 1.2);
+  torch(a.x - 3.2, 1.5, a.z - 3.2);
+}
+
+function propsLava(a) {
+  // lava lake filling one half of the room
+  for (var x = -3; x <= 3; x++) {
+    for (var z = -1; z <= 3; z++) {
+      var lx = a.x + x, lz = a.z - z;
+      if (!inCave(lx, lz, -0.5)) continue;
+      var h = hash(lx, lz);
+      block(lx, -0.28, lz, h > 0.7 ? 0xff8b3d : (h > 0.35 ? 0xe45a2a : 0xc23f18), { emissive: true });
+      if (h > 0.9) embersAt.push({ x: lx, y: 0.1, z: lz, spread: 0.4, up: 0.9 });
+    }
+  }
+  OBSTACLES.push({ minX: a.x - 3.5, maxX: a.x + 3.5, minZ: a.z - 3.5, maxZ: a.z + 0.6 });
+  // obsidian-style rim
+  for (var i = -4; i <= 4; i++) block(a.x + i, 0.15, a.z + 1.1, 0x1b1720, { sx: 1, sy: 0.3, sz: 0.4 });
+  // basalt pillars
+  [[-2.6, 2.6], [2.8, 2.2]].forEach(function (p) {
+    for (var y = 0; y < 4; y++) block(a.x + p[0], 0.5 + y, a.z + p[1], y % 2 ? 0x33302e : 0x2b2826, { sx: 0.8, sy: 1, sz: 0.8 });
+    obstacle(a.x + p[0], a.z + p[1], 0.45, 0.45);
+  });
+  torch(a.x - 3.4, 1.5, a.z + 3.2);
+}
+
+function propsLush(a) {
+  // moss floor patches
+  for (var i = 0; i < 26; i++) {
+    var hx = hash(i, 61), hz = hash(i + 4, 23);
+    var x = a.x - 3.5 + hx * 7, z = a.z - 3.5 + hz * 7;
+    if (!inCave(x, z, -0.5)) continue;
+    block(Math.round(x), 0.03, Math.round(z), i % 3 ? 0x5b6b45 : C.moss, { sx: 1, sy: 0.08, sz: 1 });
+  }
+  // hanging vines with glow berries
+  for (var j = 0; j < 12; j++) {
+    var vx = a.x - 3 + hash(j, 88) * 6, vz = a.z - 3 + hash(j + 30, 2) * 6;
+    var len = 1 + Math.floor(hash(j, 15) * 3);
+    for (var k = 0; k < len; k++) block(vx, 5.6 - k * 0.5, vz, 0x4e6338, { sx: 0.16, sy: 0.5, sz: 0.16 });
+    if (hash(j, 44) > 0.45) {
+      var by = 5.6 - len * 0.5;
+      block(vx, by, vz, 0xf2c14e, { emissive: true, sx: 0.28, sy: 0.28, sz: 0.28 });
+      torches.push({ x: vx, y: by, z: vz, soft: true });
+    }
+  }
+  // azalea-style tree
+  block(a.x + 2.4, 1.1, a.z - 2.2, 0x5b4630, { sx: 0.5, sy: 2.2, sz: 0.5 });
+  for (var lx = -1; lx <= 1; lx++) for (var lz = -1; lz <= 1; lz++)
+    block(a.x + 2.4 + lx, 2.5 + (Math.abs(lx) + Math.abs(lz)) * -0.2, a.z - 2.2 + lz, lx === 0 && lz === 0 ? 0x7d9153 : 0x5f7442);
+  obstacle(a.x + 2.4, a.z - 2.2, 0.45, 0.45);
+  // small pool
+  block(a.x - 2.4, 0.06, a.z + 2.4, 0x2f6b63, { sx: 2.6, sy: 0.12, sz: 2.6 });
+  obstacle(a.x - 2.4, a.z + 2.4, 1.3, 1.3);
+}
+
+function propsDeepDark(a) {
+  // dark floor plating with faint pulses
+  for (var x = -3; x <= 3; x++) for (var z = -3; z <= 3; z++) {
+    var px = a.x + x, pz = a.z + z;
+    if (!inCave(px, pz, -0.5)) continue;
+    var h = hash(px * 2, pz * 2);
+    if (h > 0.62) block(px, 0.04, pz, 0x122023, { sx: 1, sy: 0.1, sz: 1 });
+    if (h > 0.955) {
+      block(px, 0.12, pz, 0x1f7f7a, { emissive: true, sx: 0.5, sy: 0.14, sz: 0.5 });
+      torches.push({ x: px, y: 0.4, z: pz, soft: true, cold: true });
+    }
+  }
+  // ruined frame in the middle
+  [[-2, 0], [2, 0]].forEach(function (p) {
+    for (var y = 0; y < 5; y++) block(a.x + p[0], 0.5 + y, a.z + p[1], y % 2 ? 0x22262a : 0x1a1e21, { sx: 0.9, sy: 1, sz: 0.9 });
+    obstacle(a.x + p[0], a.z + p[1], 0.5, 0.5);
+  });
+  block(a.x, 5.2, a.z, 0x1a1e21, { sx: 4.6, sy: 0.7, sz: 0.9 });
+}
+
+function propsStronghold(a) {
+  // brick floor
+  for (var x = -3; x <= 3; x++) for (var z = -3; z <= 3; z++) {
+    var px = a.x + x, pz = a.z + z;
+    if (!inCave(px, pz, -0.5)) continue;
+    block(px, 0.03, pz, (x + z) % 2 ? 0x4c4f53 : 0x44474b, { sx: 1, sy: 0.08, sz: 1 });
+  }
+  // bookshelf walls
+  function shelf(cx, cz, along) {
+    for (var i = -1; i <= 1; i++) {
+      for (var y = 0; y < 3; y++) {
+        var bx = cx + (along ? i : 0), bz = cz + (along ? 0 : i);
+        block(bx, 0.5 + y, bz, 0x5a4126, { sx: along ? 1 : 0.5, sy: 1, sz: along ? 0.5 : 1 });
+        var tone = [0x8c5a3c, 0x9a7b4f, 0x6f4a6b, 0x3f5f6b][Math.floor(hash(bx + y, bz) * 4)];
+        block(bx, 0.5 + y, bz + (along ? 0.28 : 0), tone, { sx: along ? 0.85 : 0.06, sy: 0.7, sz: along ? 0.06 : 0.85 });
+      }
+    }
+    OBSTACLES.push({
+      minX: cx - (along ? 1.6 : 0.4), maxX: cx + (along ? 1.6 : 0.4),
+      minZ: cz - (along ? 0.4 : 1.6), maxZ: cz + (along ? 0.4 : 1.6)
+    });
+  }
+  shelf(a.x - 3.2, a.z - 1, false);
+  shelf(a.x + 3.2, a.z + 1, false);
+  shelf(a.x, a.z - 3.2, true);
+  // reading table
+  block(a.x, 0.75, a.z + 0.6, 0x6b5236, { sx: 1.6, sy: 0.12, sz: 1 });
+  block(a.x, 0.35, a.z + 0.6, 0x50402c, { sx: 0.3, sy: 0.7, sz: 0.3 });
+  obstacle(a.x, a.z + 0.6, 0.85, 0.55);
+  // lamp blocks
+  [[-2.2, 2.4], [2.2, -2.4]].forEach(function (p) {
+    block(a.x + p[0], 2.6, a.z + p[1], 0xffd08a, { emissive: true, sx: 0.6, sy: 0.6, sz: 0.6 });
+    torches.push({ x: a.x + p[0], y: 2.6, z: a.z + p[1], soft: true });
+  });
+  torch(a.x - 3.4, 1.7, a.z + 3.2);
+}
+
+
+var portalGroup = null, portalCore = null;
+
+function propsPortal(a) {
+  // sunken platform
+  for (var x = -4; x <= 4; x++) for (var z = -4; z <= 4; z++) {
+    var px = a.x + x, pz = a.z + z;
+    if (!inCave(px, pz, -0.5)) continue;
+    block(px, 0.03, pz, (x + z) % 2 ? 0x2b3038 : 0x252a31, { sx: 1, sy: 0.08, sz: 1 });
+  }
+  // frame blocks in a ring
+  var ring = [];
+  for (var i = -2; i <= 2; i++) {
+    ring.push([i, -2.4], [i, 2.4]);
+    if (Math.abs(i) < 2.4) ring.push([-2.4, i], [2.4, i]);
+  }
+  ring.forEach(function (p) {
+    block(a.x + p[0], 0.45, a.z + p[1], 0xc8b27a, { sx: 1, sy: 0.9, sz: 1 });
+    block(a.x + p[0], 0.95, a.z + p[1], C.portal, { emissive: true, sx: 0.34, sy: 0.16, sz: 0.34 });
+  });
+  OBSTACLES.push({ minX: a.x - 2.9, maxX: a.x + 2.9, minZ: a.z - 2.9, maxZ: a.z - 1.9 });
+  OBSTACLES.push({ minX: a.x - 2.9, maxX: a.x + 2.9, minZ: a.z + 1.9, maxZ: a.z + 2.9 });
+  OBSTACLES.push({ minX: a.x - 2.9, maxX: a.x - 1.9, minZ: a.z - 2.9, maxZ: a.z + 2.9 });
+  OBSTACLES.push({ minX: a.x + 1.9, maxX: a.x + 2.9, minZ: a.z - 2.9, maxZ: a.z + 2.9 });
+  torch(a.x - 4.2, 1.7, a.z + 4.2);
+  torch(a.x + 4.2, 1.7, a.z + 4.2);
+}
+
+/* portal surface + orbiting shards are separate meshes so they can animate */
+function buildPortalAnim(a) {
+  portalGroup = new THREE.Group();
+  portalGroup.position.set(a.x, 0, a.z);
+
+  var surf = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(4.4, 4.4),
+    new THREE.MeshBasicMaterial({ color: 0x0c2b2c })
+  );
+  surf.rotation.x = -Math.PI / 2;
+  surf.position.y = 0.86;
+  portalGroup.add(surf);
+
+  portalCore = new THREE.Group();
+  for (var i = 0; i < 22; i++) {
+    var s = 0.12 + hash(i, 2) * 0.22;
+    var m = new THREE.Mesh(
+      new THREE.BoxBufferGeometry(s, s, s),
+      new THREE.MeshBasicMaterial({ color: i % 3 ? C.portal : 0xa8f0ec })
+    );
+    var ang = (i / 22) * Math.PI * 2;
+    var rad = 0.5 + hash(i, 9) * 1.5;
+    m.position.set(Math.cos(ang) * rad, 1 + hash(i, 5) * 2.4, Math.sin(ang) * rad);
+    m.userData.ang = ang; m.userData.rad = rad; m.userData.spd = 0.3 + hash(i, 7) * 0.7;
+    portalCore.add(m);
+  }
+  portalGroup.add(portalCore);
+  world.add(portalGroup);
+}
+
+/* --------------------------- assemble world -------------------------- */
+buildShell();
+propsCaveMouth(REGIONS[0].anchor);
+propsMineshaft(REGIONS[1].anchor);
+propsDripstone(REGIONS[2].anchor);
+propsLava(REGIONS[3].anchor);
+propsLush(REGIONS[4].anchor);
+propsDeepDark(REGIONS[5].anchor);
+propsStronghold(REGIONS[6].anchor);
+propsPortal(REGIONS[7].anchor);
+flushBatches();
+
+/* ------------------------------ renderer ----------------------------- */
+var canvas = $("scene-canvas");
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.setClearColor(C.cave);
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x101114, 6, 26);
+scene.add(world);
+
+var camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 120);
+camera.position.set(0, 1.7, 11);
+
+scene.add(new THREE.AmbientLight(0x2a2e36, 1.0));
+var hemi = new THREE.HemisphereLight(0x59636e, 0x1b1d20, 0.55);
+scene.add(hemi);
+
+buildPortalAnim(REGIONS[7].anchor);
+
+/* A small pool of point lights follows the six nearest torches to the
+   player, which keeps the light count fixed no matter how many torches
+   the cave contains. */
+var LIGHT_POOL = 6;
+var lights = [];
+for (var li = 0; li < LIGHT_POOL; li++) {
+  var pl = new THREE.PointLight(0xffa04a, 0, 11, 2);
+  scene.add(pl); lights.push(pl);
+}
+var lavaLight = new THREE.PointLight(0xff6a26, 1.6, 16, 2);
+lavaLight.position.set(REGIONS[3].anchor.x, 1.6, REGIONS[3].anchor.z - 1);
+scene.add(lavaLight);
+var portalLight = new THREE.PointLight(C.portal, 1.7, 15, 2);
+portalLight.position.set(REGIONS[7].anchor.x, 2.2, REGIONS[7].anchor.z);
+scene.add(portalLight);
+var mouthLight = new THREE.DirectionalLight(0xbcd0dd, 0.22);
+mouthLight.position.set(2, 8, 14);
+scene.add(mouthLight);
+
+/* ------------------------------ embers ------------------------------- */
+var emberPoints = null, emberData = [];
+(function buildEmbers() {
+  var count = Math.min(embersAt.length * 6, 320);
+  if (!count) return;
+  var pos = new Float32Array(count * 3);
+  for (var i = 0; i < count; i++) {
+    var src = embersAt[i % embersAt.length];
+    var d = {
+      ox: src.x, oy: src.y, oz: src.z,
+      x: src.x + (hash(i, 1) - 0.5) * src.spread,
+      y: src.y + hash(i, 2) * 1.2,
+      z: src.z + (hash(i, 3) - 0.5) * src.spread,
+      v: 0.25 + hash(i, 4) * src.up, spread: src.spread, life: hash(i, 6) * 3
+    };
+    emberData.push(d);
+    pos[i * 3] = d.x; pos[i * 3 + 1] = d.y; pos[i * 3 + 2] = d.z;
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  emberPoints = new THREE.Points(g, new THREE.PointsMaterial({
+    color: 0xffb066, size: 0.09, transparent: true, opacity: 0.85, depthWrite: false,
+    blending: THREE.AdditiveBlending
+  }));
+  emberPoints.frustumCulled = false;
+  scene.add(emberPoints);
+})();
+
+/* ------------------------------ avatar ------------------------------- */
+/* Original blocky explorer — five boxes, no external model. */
+var avatar = new THREE.Group();
+(function buildAvatar() {
+  function part(w, h, d, color, y) {
+    var m = new THREE.Mesh(new THREE.BoxBufferGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: color }));
+    m.position.y = y; return m;
+  }
+  var head = part(0.5, 0.5, 0.5, 0xd9b48a, 1.55);
+  var body = part(0.6, 0.7, 0.32, 0x3f6b78, 1.0);
+  var armL = part(0.2, 0.66, 0.24, 0x35606c, 1.0); armL.position.x = -0.4;
+  var armR = part(0.2, 0.66, 0.24, 0x35606c, 1.0); armR.position.x = 0.4;
+  var legL = part(0.24, 0.68, 0.26, 0x3a3f4a, 0.34); legL.position.x = -0.16;
+  var legR = part(0.24, 0.68, 0.26, 0x3a3f4a, 0.34); legR.position.x = 0.16;
+  var visor = part(0.52, 0.12, 0.02, 0x1d2226, 1.6); visor.position.z = 0.25;
+  var lamp = part(0.16, 0.16, 0.1, 0xffd08a, 1.62); lamp.position.z = 0.3;
+  avatar.add(head, body, armL, armR, legL, legR, visor, lamp);
+  avatar.userData = { armL: armL, armR: armR, legL: legL, legR: legR };
+  avatar.visible = false;
+  scene.add(avatar);
+})();
+
+/* ============================ audio engine ===========================
+   Everything below is synthesised at runtime: noise bursts shaped by
+   filters and envelopes. No sample files, no external audio.
+   ==================================================================== */
+var Audio = {
+  ctx: null, master: null, noise: null, muted: false, hum: null, humGain: null
+};
+
+function audioInit() {
+  if (Audio.ctx) return;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  Audio.ctx = new AC();
+  Audio.master = Audio.ctx.createGain();
+  Audio.master.gain.value = Audio.muted ? 0 : 0.5;
+  Audio.master.connect(Audio.ctx.destination);
+
+  var len = Math.floor(Audio.ctx.sampleRate * 2);
+  var buf = Audio.ctx.createBuffer(1, len, Audio.ctx.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  Audio.noise = buf;
+
+  // continuous low cave tone
+  var drone = Audio.ctx.createOscillator();
+  var dg = Audio.ctx.createGain();
+  drone.type = "sine"; drone.frequency.value = 42;
+  dg.gain.value = 0.05;
+  drone.connect(dg); dg.connect(Audio.master); drone.start();
+
+  // portal hum, gain driven by proximity
+  Audio.hum = Audio.ctx.createOscillator();
+  Audio.humGain = Audio.ctx.createGain();
+  var hum2 = Audio.ctx.createOscillator();
+  Audio.hum.type = "sine"; Audio.hum.frequency.value = 96;
+  hum2.type = "sine"; hum2.frequency.value = 96.7;
+  Audio.humGain.gain.value = 0;
+  Audio.hum.connect(Audio.humGain); hum2.connect(Audio.humGain);
+  Audio.humGain.connect(Audio.master);
+  Audio.hum.start(); hum2.start();
+}
+
+function noiseBurst(o) {
+  if (!Audio.ctx || Audio.muted) return;
+  var t = Audio.ctx.currentTime;
+  var src = Audio.ctx.createBufferSource();
+  src.buffer = Audio.noise;
+  src.playbackRate.value = o.rate || 1;
+  var flt = Audio.ctx.createBiquadFilter();
+  flt.type = o.filter || "bandpass";
+  flt.frequency.value = o.freq;
+  flt.Q.value = o.q || 1;
+  var g = Audio.ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(o.gain, t + (o.attack || 0.004));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+  src.connect(flt); flt.connect(g); g.connect(Audio.master);
+  src.start(t, Math.random() * 1.5); src.stop(t + o.dur + 0.02);
+}
+
+function tone(freq, dur, gain, type, slideTo) {
+  if (!Audio.ctx || Audio.muted) return;
+  var t = Audio.ctx.currentTime;
+  var osc = Audio.ctx.createOscillator();
+  var g = Audio.ctx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.setValueAtTime(freq, t);
+  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g); g.connect(Audio.master);
+  osc.start(t); osc.stop(t + dur + 0.02);
+}
+
+var SFX = {
+  stepStone: function () { noiseBurst({ freq: 420 + Math.random() * 240, q: 1.2, gain: 0.13, dur: 0.09, rate: 1 }); },
+  stepWood: function () { noiseBurst({ freq: 900 + Math.random() * 400, q: 2.4, gain: 0.11, dur: 0.07, rate: 1.3 }); tone(160, 0.05, 0.06, "square"); },
+  stepMoss: function () { noiseBurst({ freq: 260 + Math.random() * 120, q: 0.8, gain: 0.09, dur: 0.12 }); },
+  arrive: function () { tone(392, 0.16, 0.16, "triangle"); setTimeout(function () { tone(587, 0.24, 0.13, "triangle"); }, 110); },
+  portalArrive: function () { tone(220, 0.6, 0.16, "sine", 660); setTimeout(function () { tone(330, 0.8, 0.12, "triangle", 990); }, 140); },
+  place: function () { noiseBurst({ freq: 1200, q: 3, gain: 0.1, dur: 0.06 }); tone(240, 0.06, 0.07, "square"); },
+  breakBlock: function () { noiseBurst({ freq: 700, q: 0.7, gain: 0.16, dur: 0.18, filter: "lowpass" }); },
+  lava: function () { noiseBurst({ freq: 180 + Math.random() * 160, q: 0.6, gain: 0.09, dur: 0.3, filter: "lowpass" }); },
+  drip: function () { tone(1400 + Math.random() * 500, 0.16, 0.1, "sine", 420); },
+  torch: function () { noiseBurst({ freq: 2600 + Math.random() * 1200, q: 0.9, gain: 0.03, dur: 0.12, filter: "highpass" }); },
+  echo: function () { tone(174, 1.1, 0.07, "sine", 130); },
+  jump: function () { tone(300, 0.1, 0.08, "square", 460); },
+  land: function () { noiseBurst({ freq: 220, q: 0.8, gain: 0.14, dur: 0.14, filter: "lowpass" }); }
+};
+
+function setMuted(m) {
+  Audio.muted = m;
+  if (Audio.master) Audio.master.gain.value = m ? 0 : 0.5;
+  var b = $("sound-toggle-button");
+  b.textContent = m ? "Sound off" : "Sound on";
+  b.setAttribute("aria-pressed", m ? "true" : "false");
+  // Per spec, muting also stands down torch lights and ember particles.
+  if (emberPoints) emberPoints.visible = !m;
+}
+
+/* =========================== player state =========================== */
+var player = {
+  x: 0, z: 11, y: 0, vy: 0,
+  yaw: Math.PI, pitch: -0.05,
+  eye: 1.7, targetEye: 1.7,
+  grounded: true, bob: 0, stepAcc: 0, thirdPerson: false, walkPhase: 0
+};
+var keys = {};
+var joy = { x: 0, y: 0, active: false };
+var RADIUS = 0.34;
+
+function hitsObstacle(x, z) {
+  for (var i = 0; i < OBSTACLES.length; i++) {
+    var o = OBSTACLES[i];
+    if (x > o.minX - RADIUS && x < o.maxX + RADIUS && z > o.minZ - RADIUS && z < o.maxZ + RADIUS) return true;
+  }
+  return false;
+}
+function canStand(x, z) { return inCave(x, z, RADIUS) && !hitsObstacle(x, z); }
+
+function moveWithCollision(dx, dz) {
+  var nx = player.x + dx, nz = player.z + dz;
+  if (canStand(nx, nz)) { player.x = nx; player.z = nz; return true; }
+  if (canStand(nx, player.z)) { player.x = nx; return true; }      // slide along Z wall
+  if (canStand(player.x, nz)) { player.z = nz; return true; }      // slide along X wall
+  return false;
+}
+
+/* ============================ app state ============================= */
+var mode = "guided";           // "guided" | "explore"
+var currentRegion = 0;
+var panelOpen = false;
+var loaded = false;
+var submissions = [];          // demo only — session memory, nothing persisted
+
+/* ============================ chamber panel ========================= */
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function renderPanel(i) {
+  var r = REGIONS[i];
+  $("panel-index").textContent = r.num + " — " + r.name.toUpperCase();
+  $("panel-title").textContent = r.name;
+  var h = "";
+  if (r.chips) {
+    h += '<div class="stat-row">' + r.chips.map(function (c, k) {
+      return '<span class="chip ' + (k === 0 ? "ember" : "") + '">' + esc(c) + "</span>";
+    }).join("") + "</div>";
+  }
+  h += "<p>" + esc(r.body) + "</p>";
+  if (r.rows) {
+    h += '<ul class="line-list">' + r.rows.map(function (row) {
+      return "<li><span class=\"k\">" + esc(row[0]) + "</span><span>" + esc(row[1]) + "</span></li>";
+    }).join("") + "</ul>";
+  }
+  if (r.list) {
+    h += '<ul class="line-list">' + r.list.map(function (t) {
+      return '<li><span class="k">·</span><span>' + esc(t) + "</span></li>";
+    }).join("") + "</ul>";
+  }
+  if (r.kind === "cta") {
+    h += '<button class="hud-btn portal panel-cta" id="panel-register-button" data-testid="panel-register-button">Register</button>';
+  }
+  $("panel-body").innerHTML = h;
+  var pr = $("panel-register-button");
+  if (pr) pr.addEventListener("click", openRegistration);
+}
+
+function openPanel(i) {
+  renderPanel(i);
+  $("chamber-panel").hidden = false;
+  panelOpen = true;
+}
+function closePanel() { $("chamber-panel").hidden = true; panelOpen = false; }
+
+function setRegion(i, silent) {
+  if (i === currentRegion && panelOpen) return;
+  currentRegion = i;
+  openPanel(i);
+  document.querySelectorAll(".slot").forEach(function (s, k) {
+    s.setAttribute("data-active", k === i ? "true" : "false");
+  });
+  if (!silent) {
+    if (REGIONS[i].id === "portal") SFX.portalArrive();
+    else if (REGIONS[i].id === "stronghold") { SFX.arrive(); setTimeout(SFX.echo, 260); }
+    else SFX.arrive();
+  }
+}
+
+/* ============================== hotbar ============================== */
+var GLYPH = {
+  entrance: C.bone, mineshaft: C.copper, crafting: 0x8b8072, lava: C.ember,
+  lush: C.moss, deepdark: 0x2f6f6b, stronghold: 0x9a7b4f, portal: C.portal
+};
+(function buildHotbar() {
+  var nav = $("chamber-navigator");
+  REGIONS.forEach(function (r, i) {
+    var b = document.createElement("button");
+    b.className = "slot";
+    b.setAttribute("data-testid", "hotbar-" + r.id + "-button");
+    b.setAttribute("aria-label", r.name);
+    b.innerHTML = '<span class="num">' + r.num + '</span>' +
+      '<span class="glyph" style="color:#' + GLYPH[r.id].toString(16).padStart(6, "0") + '"></span>' +
+      '<span class="tip">' + esc(r.name) + "</span>";
+    b.addEventListener("click", function () { goToRegion(i); });
+    nav.appendChild(b);
+  });
+})();
+
+function goToRegion(i) {
+  audioInit(); SFX.place();
+  endTour();
+  setMode("explore");
+  var a = REGIONS[i].anchor;
+  player.x = a.x; player.z = a.z; player.y = 0; player.vy = 0;
+  var next = REGIONS[Math.min(i + 1, REGIONS.length - 1)].anchor;
+  if (i < REGIONS.length - 1) player.yaw = Math.atan2(a.x - next.x, a.z - next.z);
+  setRegion(i);
+}
+
+/* ============================ guided tour =========================== */
+var tour = { active: false, leg: 0, t: 0, phase: "travel", from: null, to: null };
+var TRAVEL = 3.4, DWELL = 4.2;
+
+function startTour() {
+  if (reduceMotion) {           // no automatic camera motion under reduced motion
+    setMode("explore");
+    goToRegion(0);
+    return;
+  }
+  endTour();
+  tour.active = true; tour.leg = 0; tour.t = 0; tour.phase = "dwell";
+  var a = REGIONS[0].anchor;
+  player.x = a.x; player.z = a.z + 2.5; player.y = 0; player.vy = 0;
+  player.yaw = Math.PI;
+  setMode("guided");
+  setRegion(0);
+  $("guided-tour-skip-button").hidden = false;
+}
+function endTour() {
+  tour.active = false;
+  $("guided-tour-skip-button").hidden = true;
+}
+function updateTour(dt) {
+  if (!tour.active) return;
+  tour.t += dt;
+  if (tour.phase === "dwell") {
+    if (tour.t >= DWELL) {
+      if (tour.leg >= REGIONS.length - 1) { endTour(); setMode("explore"); return; }
+      tour.phase = "travel"; tour.t = 0;
+      tour.from = { x: player.x, z: player.z };
+      tour.to = REGIONS[tour.leg + 1].anchor;
+    }
+  } else {
+    var k = Math.min(tour.t / TRAVEL, 1);
+    var e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;   // ease in-out
+    // halls are L-shaped, so walk X first and then Z rather than
+    // interpolating straight through the corner
+    var dx = tour.to.x - tour.from.x, dz = tour.to.z - tour.from.z;
+    var run = Math.abs(dx), rise = Math.abs(dz);
+    var travelled = e * (run + rise);
+    var px = player.x, pz = player.z;
+    if (travelled < run) {
+      player.x = tour.from.x + Math.sign(dx) * travelled;
+      player.z = tour.from.z;
+    } else {
+      player.x = tour.to.x;
+      player.z = tour.from.z + Math.sign(dz) * (travelled - run);
+    }
+    var vx = player.x - px, vz = player.z - pz;
+    if (Math.abs(vx) + Math.abs(vz) > 0.0005) {
+      var want = Math.atan2(-vx, -vz);
+      var diff = ((want - player.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      player.yaw += diff * Math.min(dt * 3.4, 1);
+    }
+    player.walkPhase += 6 * dt;
+    player.stepAcc += 3.2 * dt;
+    if (player.stepAcc > 1) { player.stepAcc = 0; footstep(); }
+    if (k >= 1) {
+      tour.leg++; tour.phase = "dwell"; tour.t = 0;
+      setRegion(tour.leg);
+    }
+  }
+}
+
+/* ============================== modes =============================== */
+function setMode(m) {
+  mode = m;
+  $("movement-mode-toggle").setAttribute("data-active", m === "explore" ? "true" : "false");
+  $("guided-tour-button").setAttribute("data-active", m === "guided" ? "true" : "false");
+  $("crosshair").style.display = m === "explore" ? "block" : "none";
+}
+
+/* ============================ footsteps ============================= */
+function footstep() {
+  var r = nearestRegion(player.x, player.z);
+  if (r === 1) SFX.stepWood();
+  else if (r === 4) SFX.stepMoss();
+  else SFX.stepStone();
+}
+
+/* ============================== input =============================== */
+window.addEventListener("keydown", function (e) {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  keys[e.code] = true;
+  audioInit();
+  if (e.code === "Escape") {
+    if (!$("registration-dialog").hidden) closeRegistration();
+    else if (panelOpen) closePanel();
+  }
+  if (e.code === "KeyV") { player.thirdPerson = !player.thirdPerson; SFX.place(); }
+  if (e.code === "Space") e.preventDefault();
+  var n = /^Digit([1-8])$/.exec(e.code);
+  if (n) goToRegion(parseInt(n[1], 10) - 1);
+});
+window.addEventListener("keyup", function (e) { keys[e.code] = false; });
+
+/* drag-look on the canvas */
+var dragging = false, lastPX = 0, lastPY = 0;
+function lookStart(x, y) { dragging = true; lastPX = x; lastPY = y; }
+function lookMove(x, y) {
+  if (!dragging) return;
+  player.yaw -= (x - lastPX) * 0.0042;
+  player.pitch -= (y - lastPY) * 0.0034;
+  player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch));
+  lastPX = x; lastPY = y;
+  if (tour.active) { endTour(); setMode("explore"); }
+}
+canvas.addEventListener("pointerdown", function (e) { audioInit(); lookStart(e.clientX, e.clientY); });
+window.addEventListener("pointermove", function (e) { lookMove(e.clientX, e.clientY); });
+window.addEventListener("pointerup", function () { dragging = false; });
+
+/* touch drag-look pad */
+var lookPad = $("drag-look-area"), lookId = null;
+lookPad.addEventListener("touchstart", function (e) {
+  audioInit();
+  var t = e.changedTouches[0]; lookId = t.identifier; lookStart(t.clientX, t.clientY);
+  e.preventDefault();
+}, { passive: false });
+lookPad.addEventListener("touchmove", function (e) {
+  for (var i = 0; i < e.changedTouches.length; i++) {
+    var t = e.changedTouches[i];
+    if (t.identifier === lookId) lookMove(t.clientX, t.clientY);
+  }
+  e.preventDefault();
+}, { passive: false });
+lookPad.addEventListener("touchend", function () { dragging = false; lookId = null; });
+
+/* virtual joystick */
+var joyEl = $("virtual-joystick"), nub = $("joy-nub"), joyId = null;
+function joySet(t) {
+  var r = joyEl.getBoundingClientRect();
+  var dx = t.clientX - (r.left + r.width / 2);
+  var dy = t.clientY - (r.top + r.height / 2);
+  var max = r.width / 2 - 10;
+  var d = Math.hypot(dx, dy);
+  if (d > max) { dx = dx / d * max; dy = dy / d * max; }
+  nub.style.transform = "translate(" + dx + "px," + dy + "px)";
+  joy.x = dx / max; joy.y = dy / max; joy.active = true;
+}
+joyEl.addEventListener("touchstart", function (e) {
+  audioInit();
+  if (tour.active) { endTour(); setMode("explore"); }
+  var t = e.changedTouches[0]; joyId = t.identifier; joySet(t); e.preventDefault();
+}, { passive: false });
+joyEl.addEventListener("touchmove", function (e) {
+  for (var i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === joyId) joySet(e.changedTouches[i]);
+  }
+  e.preventDefault();
+}, { passive: false });
+function joyEnd() { joy.x = 0; joy.y = 0; joy.active = false; joyId = null; nub.style.transform = ""; }
+joyEl.addEventListener("touchend", joyEnd);
+joyEl.addEventListener("touchcancel", joyEnd);
+
+/* ============================ registration ========================== */
+function openRegistration() {
+  audioInit(); SFX.place();
+  $("reg-form-view").hidden = false;
+  $("reg-success-view").hidden = true;
+  $("registration-error").textContent = "";
+  $("registration-dialog").hidden = false;
+  setTimeout(function () { $("registration-name-input").focus(); }, 30);
+}
+function closeRegistration() { $("registration-dialog").hidden = true; }
+
+$("registration-submit-button").addEventListener("click", function () {
+  var name = $("registration-name-input").value.trim();
+  var email = $("registration-email-input").value.trim();
+  var idea = $("registration-project-input").value.trim();
+  var err = $("registration-error");
+  if (!name) { err.textContent = "Add your name so we know who to expect."; $("registration-name-input").focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "That email address is missing something."; $("registration-email-input").focus(); return; }
+  if (!idea) { err.textContent = "One line about what you want to build is enough."; $("registration-project-input").focus(); return; }
+  err.textContent = "";
+  submissions.push({ name: name, email: email, idea: idea, at: new Date().toISOString() });
+  $("reg-success-line").textContent = name.split(" ")[0] + ", your slot is held. Watch " + email + " for the build-day brief.";
+  $("reg-form-view").hidden = true;
+  $("reg-success-view").hidden = false;
+  SFX.portalArrive();
+});
+$("registration-done-button").addEventListener("click", closeRegistration);
+$("registration-close-button").addEventListener("click", closeRegistration);
+$("registration-dialog").addEventListener("click", function (e) {
+  if (e.target === $("registration-dialog")) closeRegistration();
+});
+$("nav-register-button").addEventListener("click", openRegistration);
+$("accessible-register-button").addEventListener("click", openRegistration);
+$("accessible-portal-register-button").addEventListener("click", openRegistration);
+
+/* ============================== nav wiring ========================== */
+$("movement-mode-toggle").addEventListener("click", function () {
+  audioInit(); endTour(); setMode("explore"); SFX.place();
+});
+$("guided-tour-button").addEventListener("click", function () { audioInit(); startTour(); });
+$("guided-tour-skip-button").addEventListener("click", function () {
+  endTour(); setMode("explore"); SFX.breakBlock();
+});
+$("chamber-panel-close").addEventListener("click", closePanel);
+$("sound-toggle-button").addEventListener("click", function () {
+  audioInit(); setMuted(!Audio.muted);
+});
+$("accessible-view-toggle").addEventListener("click", function () {
+  $("standard-view").hidden = false;
+  $("scene-layer").hidden = true;
+  document.body.classList.add("standard-open");
+  window.scrollTo(0, 0);
+  $("return-to-3d-button").focus();
+});
+$("return-to-3d-button").addEventListener("click", function () {
+  $("standard-view").hidden = true;
+  $("scene-layer").hidden = false;
+  document.body.classList.remove("standard-open");
+});
+
+/* ============================== loading ============================= */
+function finishLoad() {
+  if (loaded) return;
+  loaded = true;
+  $("world-load-screen").style.display = "none";
+  startTour();
+}
+$("loading-skip-button").addEventListener("click", function () { audioInit(); finishLoad(); });
+
+(function runLoader() {
+  if (reduceMotion) { finishLoad(); return; }
+  var p = 0;
+  var fill = $("progress-fill"), read = $("progress-read");
+  var iv = setInterval(function () {
+    p += 3 + Math.random() * 7;
+    if (p >= 100) { p = 100; clearInterval(iv); setTimeout(finishLoad, 260); }
+    fill.style.width = p + "%";
+    read.textContent = Math.floor(p) + "%";
+  }, 60);
+})();
+
+/* ============================ render loop =========================== */
+var clock = new THREE.Clock();
+var camDir = new THREE.Vector3();
+var lastRegionSeen = -1, lightTimer = 0, ambTimer = 0;
+
+function updateLights(dt) {
+  lightTimer -= dt;
+  if (lightTimer <= 0) {
+    lightTimer = 0.25;
+    var sorted = torches.slice().sort(function (a, b) {
+      var da = (a.x - player.x) * (a.x - player.x) + (a.z - player.z) * (a.z - player.z);
+      var db = (b.x - player.x) * (b.x - player.x) + (b.z - player.z) * (b.z - player.z);
+      return da - db;
+    });
+    for (var i = 0; i < lights.length; i++) {
+      var t = sorted[i];
+      if (t) {
+        lights[i].position.set(t.x, t.y, t.z);
+        lights[i].color.setHex(t.cold ? 0x3fd8cf : (t.soft ? 0xffd08a : 0xffa04a));
+        lights[i].userData.base = t.soft ? 0.8 : 1.5;
+      } else lights[i].userData.base = 0;
+    }
+  }
+  var now = performance.now() * 0.001;
+  for (var j = 0; j < lights.length; j++) {
+    var base = lights[j].userData.base || 0;
+    // muting stands down torch lighting, per the spec
+    if (Audio.muted) { lights[j].intensity = base * 0.25; continue; }
+    var flick = reduceMotion ? 1 : 0.85 + Math.sin(now * (7 + j) + j) * 0.1 + Math.random() * 0.06;
+    lights[j].intensity = base * flick;
+  }
+  lavaLight.intensity = reduceMotion ? 1.5 : 1.4 + Math.sin(now * 2.3) * 0.35;
+  portalLight.intensity = reduceMotion ? 1.6 : 1.5 + Math.sin(now * 1.6) * 0.4;
+}
+
+function updateEmbers(dt) {
+  if (!emberPoints || Audio.muted || reduceMotion) return;
+  var arr = emberPoints.geometry.attributes.position.array;
+  for (var i = 0; i < emberData.length; i++) {
+    var d = emberData[i];
+    d.y += d.v * dt;
+    d.x += Math.sin(performance.now() * 0.0008 + i) * 0.002;
+    d.life += dt;
+    if (d.life > 3.4) {
+      d.life = 0;
+      d.x = d.ox + (Math.random() - 0.5) * d.spread;
+      d.y = d.oy;
+      d.z = d.oz + (Math.random() - 0.5) * d.spread;
+    }
+    arr[i * 3] = d.x; arr[i * 3 + 1] = d.y; arr[i * 3 + 2] = d.z;
+  }
+  emberPoints.geometry.attributes.position.needsUpdate = true;
+}
+
+function updateAmbience(dt) {
+  if (!Audio.ctx || Audio.muted) return;
+  ambTimer -= dt;
+  var r = nearestRegion(player.x, player.z);
+  // portal hum rises as you approach the last chamber
+  var pa = REGIONS[7].anchor;
+  var pd = Math.hypot(player.x - pa.x, player.z - pa.z);
+  if (Audio.humGain) Audio.humGain.gain.value = Math.max(0, 0.12 * (1 - pd / 18));
+  if (ambTimer > 0) return;
+  ambTimer = 0.35 + Math.random() * 0.9;
+  var la = REGIONS[3].anchor;
+  if (Math.hypot(player.x - la.x, player.z - la.z) < 9 && Math.random() > 0.35) SFX.lava();
+  if (r === 2 && Math.random() > 0.55) SFX.drip();
+  if (r === 6 && Math.random() > 0.86) SFX.echo();
+  for (var i = 0; i < torches.length; i++) {
+    var d2 = Math.hypot(torches[i].x - player.x, torches[i].z - player.z);
+    if (d2 < 3 && !torches[i].soft && Math.random() > 0.7) { SFX.torch(); break; }
+  }
+}
+
+function updatePlayer(dt) {
+  var fwd = 0, side = 0;
+  if (mode === "explore") {
+    if (keys.KeyW || keys.ArrowUp) fwd += 1;
+    if (keys.KeyS || keys.ArrowDown) fwd -= 1;
+    if (keys.KeyA || keys.ArrowLeft) side -= 1;
+    if (keys.KeyD || keys.ArrowRight) side += 1;
+    if (joy.active) { fwd += -joy.y; side += joy.x; }
+  }
+  var crouching = !!keys.KeyC;
+  var sprinting = (keys.ShiftLeft || keys.ShiftRight) && !crouching && fwd > 0;
+  player.targetEye = crouching ? 1.15 : 1.7;
+  player.eye += (player.targetEye - player.eye) * Math.min(dt * 10, 1);
+
+  var speed = crouching ? 1.6 : (sprinting ? 6.4 : 3.6);
+  var len = Math.hypot(fwd, side);
+  if (len > 1) { fwd /= len; side /= len; }
+  var moving = len > 0.05;
+
+  if (moving && mode === "explore") {
+    var sinY = Math.sin(player.yaw), cosY = Math.cos(player.yaw);
+    var dx = (-sinY * fwd + cosY * side) * speed * dt;
+    var dz = (-cosY * fwd - sinY * side) * speed * dt;
+    if (moveWithCollision(dx, dz)) {
+      player.stepAcc += Math.hypot(dx, dz);
+      player.walkPhase += (sprinting ? 11 : 7) * dt;
+      var stride = crouching ? 0.9 : (sprinting ? 0.85 : 0.62);
+      if (player.stepAcc > stride && player.grounded) { player.stepAcc = 0; footstep(); }
+    }
+  }
+
+  // gravity, jump
+  if (mode === "explore" && (keys.Space) && player.grounded) {
+    player.vy = 6.4; player.grounded = false; SFX.jump();
+  }
+  player.vy -= 21 * dt;
+  player.y += player.vy * dt;
+  if (player.y <= 0) {
+    if (!player.grounded && player.vy < -3) SFX.land();
+    player.y = 0; player.vy = 0; player.grounded = true;
+  }
+  var head = ceilingAt(player.x, player.z) - 0.35;
+  if (player.y + player.eye > head) { player.y = head - player.eye; player.vy = Math.min(player.vy, 0); }
+
+  // head bob
+  var bobTarget = (moving && player.grounded && !reduceMotion && mode === "explore")
+    ? Math.sin(player.walkPhase * 2) * (sprinting ? 0.07 : 0.045) : 0;
+  player.bob += (bobTarget - player.bob) * Math.min(dt * 12, 1);
+
+  // camera placement
+  var eyeY = player.y + player.eye + player.bob;
+  if (player.thirdPerson) {
+    avatar.visible = true;
+    avatar.position.set(player.x, player.y, player.z);
+    avatar.rotation.y = player.yaw;
+    var swing = moving ? Math.sin(player.walkPhase * 2) * 0.7 : 0;
+    avatar.userData.legL.rotation.x = swing;
+    avatar.userData.legR.rotation.x = -swing;
+    avatar.userData.armL.rotation.x = -swing * 0.7;
+    avatar.userData.armR.rotation.x = swing * 0.7;
+    var dist = 3.4, back = dist * Math.cos(player.pitch);
+    var cx = player.x + Math.sin(player.yaw) * back;
+    var cz = player.z + Math.cos(player.yaw) * back;
+    // pull the camera in if the wall is closer than the boom
+    if (!inCave(cx, cz, 0.2)) { cx = player.x + Math.sin(player.yaw) * 1.2; cz = player.z + Math.cos(player.yaw) * 1.2; }
+    camera.position.set(cx, eyeY + 0.6 - Math.sin(player.pitch) * dist, cz);
+    camera.lookAt(player.x, player.y + 1.2, player.z);
+  } else {
+    avatar.visible = false;
+    camera.position.set(player.x, eyeY, player.z);
+    camDir.set(
+      -Math.sin(player.yaw) * Math.cos(player.pitch),
+      Math.sin(player.pitch),
+      -Math.cos(player.yaw) * Math.cos(player.pitch)
+    );
+    camera.lookAt(camera.position.x + camDir.x, camera.position.y + camDir.y, camera.position.z + camDir.z);
+  }
+
+  // region trigger
+  for (var i = 0; i < REGIONS.length; i++) {
+    var a = REGIONS[i].anchor;
+    if (Math.hypot(player.x - a.x, player.z - a.z) < REGIONS[i].radius) {
+      if (i !== lastRegionSeen) { lastRegionSeen = i; if (!tour.active) setRegion(i); }
+      break;
+    }
+  }
+  var depth = Math.round(54 + (11 - player.z) * 1.6);
+  $("depth-read").textContent = "Y −" + depth + " · REGION " + REGIONS[nearestRegion(player.x, player.z)].num;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  var dt = Math.min(clock.getDelta(), 0.05);
+  updateTour(dt);
+  updatePlayer(dt);
+  updateLights(dt);
+  updateEmbers(dt);
+  updateAmbience(dt);
+  if (portalCore && !reduceMotion) {
+    var t = performance.now() * 0.001;
+    portalCore.rotation.y = t * 0.25;
+    portalCore.children.forEach(function (m, i) {
+      m.position.y = 1 + ((t * m.userData.spd + i) % 2.6);
+      m.rotation.x = t * m.userData.spd;
+      m.rotation.z = t * m.userData.spd * 0.6;
+    });
+  }
+  if (!document.getElementById("scene-layer").hidden) renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+});
+
+setMode("guided");
+})();
+</script>
+</body>
+</html>
