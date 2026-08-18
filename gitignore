@@ -1,0 +1,31 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependency directories (in case a build step / local server is added later)
+node_modules/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+
+# Screenshots working files (keep only final images used in README)
+screenshots/*.psd
+screenshots/*.fig
+
+# Misc
+*.tmp
+.cache/
