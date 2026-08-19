@@ -1,4 +1,4 @@
-# DEEPCRAFT — 3D Hackathon Landing Page
+<img width="1899" height="871" alt="Screenshot 2026-08-19 131819" src="https://github.com/user-attachments/assets/f881d87f-e58f-422c-9829-8d01f20fa0d9" /># DEEPCRAFT — 3D Hackathon Landing Page
 
 An interactive, voxel-cave-themed landing page for a 24-hour college hackathon, built as a
 navigable 3D scene rather than a traditional scrolling page. Visitors move through a mine/cave
@@ -90,7 +90,10 @@ deepcraft-hackathon-landing/
 
 | Cave Entrance | Chamber Panel | End Portal / Registration |
 |---|---|---|
-| ![Cave entrance](./screenshots/entrance.png) | ![Chamber panel](./screenshots/chamber-panel.png) | ![End portal](./screenshots/end-portal.png) |
+| ![Cave entrance](<img width="1899" height="871" alt="Screenshot 2026-08-19 131819" src="https://github.com/user-attachments/assets/64efafd5-fd8b-4b1a-83bd-ba18668faf49" />
+) | ![Chamber panel](<img width="615" height="89" alt="Screenshot 2026-08-19 131944" src="https://github.com/user-attachments/assets/7699f36c-4a4b-46a5-805c-64ce254333ef" />
+) | ![End portal](<img width="1897" height="855" alt="Screenshot 2026-08-19 131925" src="https://github.com/user-attachments/assets/12c9ee65-69d9-4896-99f9-190d4d7cbe89" />
+) |
 
 *(Add your actual screenshots to the `/screenshots` folder and update filenames above.)*
 
