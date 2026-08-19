@@ -5,7 +5,7 @@ navigable 3D scene rather than a traditional scrolling page. Visitors move throu
 system — each chamber reveals a section of hackathon information — and end their journey at the
 End Portal, which opens the registration flow.
 
-**Live demo:** [Add your deployed link here]
+**Live demo:** https://raghav-1407.github.io/deepcraft-hackathon-landing/
 
 ---
 
