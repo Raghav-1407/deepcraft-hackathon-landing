@@ -89,9 +89,12 @@ deepcraft-hackathon-landing/
 ## Screenshots
 
 | Cave Entrance | Chamber Panel | End Portal / Registration |
-| [Cave entrance](<img width="1899" height="871" alt="Screenshot 2026-08-19 131819" src="https://github.com/user-attachments/assets/64efafd5-fd8b-4b1a-83bd-ba18668faf49" />)
-| [Chamber panel](<img width="615" height="89" alt="Screenshot 2026-08-19 131944" src="https://github.com/user-attachments/assets/7699f36c-4a4b-46a5-805c-64ce254333ef" />) 
-| [End portal](<img width="1897" height="855" alt="Screenshot 2026-08-19 131925" src="https://github.com/user-attachments/assets/12c9ee65-69d9-4896-99f9-190d4d7cbe89" />) |
+| [Cave entrance](<img width="1899" height="871" alt="Screenshot 2026-08-19 131819" src="https://github.com/user-attachments/assets/167dda84-e754-4131-b80b-52ccd7d9d092" />
+)
+| [Chamber panel](<img width="615" height="89" alt="Screenshot 2026-08-19 131944" src="https://github.com/user-attachments/assets/f272c32c-1da5-468f-9b20-f1da5b0096a5" />
+
+| [End portal]<img width="1897" height="855" alt="Screenshot 2026-08-19 131925" src="https://github.com/user-attachments/assets/503f540e-5544-43c3-a12a-53c4e00c55e4" />
+ |
 
 ## Future Improvements
 
